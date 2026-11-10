@@ -109,14 +109,6 @@ operations, safe stopping (including camera loss and the failsafe), settings val
 using a fake camera and a recording keyboard. Detecting a real hand and driving a real game need a webcam
 and the game, so check those by running the app.
 
-## Screenshots
-
-_Add screenshots of the dashboard here (for example `docs/dashboard.png`)._
-
-## Demo video
-
-_Add a link or embedded clip of the controller playing a game here._
-
 ## Future improvements
 
 - Virtual gamepad output (analog steering) for games that ignore keyboard input
