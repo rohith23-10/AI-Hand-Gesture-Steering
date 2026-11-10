@@ -125,7 +125,7 @@
     lastBrakeGesture = data.brake_gesture;
   }
 
-  function saveSettingsSoon() {
+  
    
 function saveSettingsSoon() {
   clearTimeout(settingsTimer);
@@ -189,7 +189,7 @@ el.brakeG.addEventListener("change", () => handleGestureChange("brake"));
   el.stop.addEventListener("click", () => api("/api/stop", "POST"));
   el.cal.addEventListener("click", () => api("/api/calibrate", "POST"));
 
-  loadSettings();
+   loadSettings();
   loadSessions();
   poll();
-}
+})();
