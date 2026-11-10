@@ -180,7 +180,7 @@ class ControllerEngine:
     def calibrate(self) -> None:
         """Use the hand position in the next frame as the neutral (straight) position."""
         self._calibrate_flag.set()
-        self._set_status(message="Calibrating: hold your hand still in the centre")
+        self._set_status(message="Calibrating: hold both hands like a straight steering wheel")
 
     # ------------------------------------------------------------- status / frames
     def _blank_status(self) -> Dict:
@@ -255,9 +255,37 @@ class ControllerEngine:
 
                 frame = cv2.flip(frame, 1)  # mirror: moving your hand right moves it right on screen
                 now = time.monotonic()
-                hand = self._detector.detect(frame)
+                # The production detector supports two-hand wheel control. Older
+                # injected detectors retain their one-hand path for compatibility.
+                two_hand_mode = hasattr(self._detector, "detect_all")
+                if two_hand_mode:
+                    hands = self._detector.detect_all(frame)
+                else:
+                    single = self._detector.detect(frame)
+                    hands = [single] if single is not None else []
+                hand = hands[0] if hands else None
 
-                if hand is not None:
+                if two_hand_mode and len(hands) >= 2:
+                    hand_detected = True
+                    no_hand_since = None
+                    left_hand, right_hand = sorted(hands[:2], key=lambda item: item.palm_center[0])
+                    lx, ly = left_hand.palm_center
+                    rx, ry = right_hand.palm_center
+                    import math
+                    wheel_angle = math.degrees(math.atan2(ry - ly, rx - lx))
+                    gesture = self._stabilizer.update(classify_gesture(hand.landmarks))
+                    if self._calibrate_flag.is_set():
+                        self.steering.calibrate_angle(wheel_angle)
+                        self._calibrate_flag.clear()
+                        self._set_status(message="Wheel calibrated: hold both hands at the centre")
+                    state = self.steering.update_angle(wheel_angle)
+                    gas = gesture == self.settings["acceleration_gesture"]
+                    brake = gesture == self.settings["brake_gesture"]
+                    if brake:
+                        gas = False
+                    self._apply_keys(state, gas, brake, now)
+                elif not two_hand_mode and hand is not None:
+                    # Compatibility path for older one-hand detector integrations.
                     hand_detected = True
                     no_hand_since = None
                     gesture = self._stabilizer.update(classify_gesture(hand.landmarks))
@@ -273,6 +301,8 @@ class ControllerEngine:
                         gas = False
                     self._apply_keys(state, gas, brake, now)
                 else:
+                    # The production two-hand wheel requires both hands. Missing either
+                    # hand releases controls after the configured dropout delay.
                     hand_detected = False
                     if no_hand_since is None:
                         no_hand_since = now
@@ -281,7 +311,7 @@ class ControllerEngine:
                         self.steering.reset()
                         state, gesture, gas, brake = SteeringState(), GESTURE_NONE, False, False
                         self._release_keys()
-                    else:  # short dropout: keep the pulse going, do not flicker
+                    else:
                         self._apply_keys(state, gas, brake, now)
 
                 if state.direction != DIR_CENTER and state.direction != last_direction:
@@ -294,7 +324,7 @@ class ControllerEngine:
                 if dt > 0:
                     fps = (1.0 / dt) if fps == 0 else 0.9 * fps + 0.1 * (1.0 / dt)
 
-                self._draw_overlay(frame, hand, state, gesture, fps)
+                self._draw_overlay(frame, hands, state, gesture, fps)
                 self._publish(frame)
                 self._set_status(
                     fps=round(fps, 1), hand_detected=hand_detected, gesture=gesture,
@@ -337,15 +367,15 @@ class ControllerEngine:
             self._frame_cond.notify_all()
 
     # ------------------------------------------------------------- drawing
-    def _draw_overlay(self, frame, hand, state: SteeringState, gesture: str, fps: float) -> None:
+    def _draw_overlay(self, frame, hands, state: SteeringState, gesture: str, fps: float) -> None:
         h, w = frame.shape[:2]
         centre = int(self.steering.neutral_x * w)
         dz = int(self.steering.dead_zone * w)
         cv2.line(frame, (centre, 0), (centre, h), (255, 170, 40), 1)
         cv2.rectangle(frame, (centre - dz, 0), (centre + dz, h), (255, 170, 40), 1)
-        if hand is not None:
-            draw_landmarks(frame, hand)
-        label = f"{fps:4.1f} FPS | {gesture} | {state.direction} {state.amount:.2f}"
+        for detected_hand in hands:
+            draw_landmarks(frame, detected_hand)
+        label = f"{fps:4.1f} FPS | 2-hand wheel | {gesture} | {state.direction} {state.amount:.2f}"
         cv2.putText(frame, label, (10, 24), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
 
     def _publish(self, frame) -> None:

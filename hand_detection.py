@@ -67,7 +67,7 @@ def ensure_model(path, url: str = MODEL_URL) -> Path:
 
 
 class HandDetector:
-    """Wraps the MediaPipe HandLandmarker (single hand, video mode)."""
+    """Wraps MediaPipe HandLandmarker (two hands, video mode)."""
 
     def __init__(self, model_path, model_url: str = MODEL_URL,
                  min_detection_confidence: float = 0.6,
@@ -82,7 +82,7 @@ class HandDetector:
         options = vision.HandLandmarkerOptions(
             base_options=mp_python.BaseOptions(model_asset_path=str(path)),
             running_mode=vision.RunningMode.VIDEO,
-            num_hands=1,
+            num_hands=2,
             min_hand_detection_confidence=min_detection_confidence,
             min_hand_presence_confidence=min_presence_confidence,
             min_tracking_confidence=min_tracking_confidence,
@@ -91,7 +91,8 @@ class HandDetector:
         self._t0 = time.monotonic()
         self._last_ts = -1
 
-    def detect(self, frame_bgr) -> Optional[HandData]:
+    def detect_all(self, frame_bgr) -> list[HandData]:
+        """Return every detected hand (up to two), with normalised landmarks."""
         import cv2
 
         rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
@@ -101,9 +102,13 @@ class HandDetector:
             ts = self._last_ts + 1
         self._last_ts = ts
         result = self._landmarker.detect_for_video(image, ts)
-        if not result.hand_landmarks:
-            return None
-        return HandData([Landmark(p.x, p.y, p.z) for p in result.hand_landmarks[0]])
+        return [HandData([Landmark(p.x, p.y, p.z) for p in points])
+                for points in (result.hand_landmarks or [])]
+
+    def detect(self, frame_bgr) -> Optional[HandData]:
+        """Backward-compatible single-hand helper used by older callers/tests."""
+        hands = self.detect_all(frame_bgr)
+        return hands[0] if hands else None
 
     def close(self) -> None:
         try:

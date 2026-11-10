@@ -80,3 +80,17 @@ def test_reset_clears_steering():
     settle(ctrl, 0.85)
     ctrl.reset()
     assert ctrl.update(0.5).direction == DIR_CENTER
+
+
+def test_two_hand_wheel_calibration_and_rotation():
+    ctrl = SteeringController(smoothing=1.0)
+    ctrl.calibrate_angle(0.0)
+    assert ctrl.update_angle(0.0).direction == DIR_CENTER
+    assert ctrl.update_angle(25.0).direction == DIR_RIGHT
+    assert ctrl.update_angle(-25.0).direction == DIR_LEFT
+
+
+def test_two_hand_wheel_small_angle_is_inside_dead_zone():
+    ctrl = SteeringController(smoothing=1.0, dead_zone=0.05)
+    ctrl.calibrate_angle(0.0)
+    assert ctrl.update_angle(1.0).direction == DIR_CENTER

@@ -43,6 +43,9 @@ class SteeringController:
         self.enter_threshold = enter_threshold
         self.exit_threshold = min(exit_threshold, enter_threshold)
         self.neutral_x = neutral_x
+        self.neutral_angle = 0.0
+        self.wheel_calibrated = False
+        self.max_wheel_angle = 45.0
         self.calibrated = False
         self._value = 0.0
         self._direction = DIR_CENTER
@@ -68,6 +71,25 @@ class SteeringController:
         self.neutral_x = _clamp(x, 0.1, 0.9)
         self.calibrated = True
         self.reset()
+
+    def calibrate_angle(self, angle_degrees: float) -> None:
+        """Set the current line angle between the two hands as straight ahead."""
+        self.neutral_angle = float(angle_degrees)
+        self.wheel_calibrated = True
+        self.calibrated = True
+        self.reset()
+
+    def update_angle(self, angle_degrees: float) -> SteeringState:
+        """Convert two-hand steering-wheel rotation into the normal steering state.
+
+        The angle is measured from the left palm to the right palm. Positive
+        rotation maps to right steering; negative rotation maps to left.
+        """
+        delta = float(angle_degrees) - self.neutral_angle
+        # Hand-line orientation is periodic over 180 degrees. Wrap to [-90, 90].
+        delta = (delta + 90.0) % 180.0 - 90.0
+        normalised = 0.5 + max(-1.0, min(1.0, delta / self.max_wheel_angle)) * 0.5
+        return self.update(normalised)
 
     def reset(self) -> None:
         self._value = 0.0

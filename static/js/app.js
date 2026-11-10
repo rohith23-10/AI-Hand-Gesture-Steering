@@ -14,6 +14,10 @@
   let videoOn = false;
   let wasRunning = false;
   let settingsTimer = null;
+  let settingsSaveQueue = Promise.resolve();
+  // Remember the last valid pair so changing one gesture can swap the other.
+  let lastAccelGesture = null;
+  let lastBrakeGesture = null;
 
   async function api(path, method = "GET", body) {
     const res = await fetch(path, {
@@ -117,25 +121,62 @@
     el.dzOut.textContent = Number(data.dead_zone).toFixed(2);
     el.accel.value = data.acceleration_gesture;
     el.brakeG.value = data.brake_gesture;
+    lastAccelGesture = data.acceleration_gesture;
+    lastBrakeGesture = data.brake_gesture;
   }
 
   function saveSettingsSoon() {
-    clearTimeout(settingsTimer);
-    settingsTimer = setTimeout(async () => {
-      const { ok, data } = await api("/api/settings", "POST", {
-        steering_sensitivity: Number(el.sens.value),
-        dead_zone: Number(el.dz.value),
-        acceleration_gesture: el.accel.value,
-        brake_gesture: el.brakeG.value,
-      });
-      if (!ok) { el.msg.textContent = data.error || "Could not save settings"; loadSettings(); }
-    }, 250);
-  }
+   
+function saveSettingsSoon() {
+  clearTimeout(settingsTimer);
+
+  settingsTimer = setTimeout(() => {
+    const settings = {
+      steering_sensitivity: Number(el.sens.value),
+      dead_zone: Number(el.dz.value),
+      acceleration_gesture: el.accel.value,
+      brake_gesture: el.brakeG.value,
+    };
+
+    settingsSaveQueue = settingsSaveQueue.then(async () => {
+      const { ok, data } = await api(
+        "/api/settings",
+        "POST",
+        settings
+      );
+
+      if (!ok) {
+        el.msg.textContent = data.error || "Could not save settings";
+        return;
+      }
+
+      lastAccelGesture = settings.acceleration_gesture;
+      lastBrakeGesture = settings.brake_gesture;
+
+      el.msg.textContent = "Gesture settings saved";
+    }).catch((error) => {
+      el.msg.textContent = "Save failed: " + error.message;
+    });
+
+  }, 250);
+}
 
   el.sens.addEventListener("input", () => { el.sensOut.textContent = Number(el.sens.value).toFixed(1); saveSettingsSoon(); });
   el.dz.addEventListener("input", () => { el.dzOut.textContent = Number(el.dz.value).toFixed(2); saveSettingsSoon(); });
-  el.accel.addEventListener("change", saveSettingsSoon);
-  el.brakeG.addEventListener("change", saveSettingsSoon);
+  function handleGestureChange(changed) {
+    // The backend requires acceleration and braking to use different gestures.
+    // If the user selects the other control's gesture, swap the previous value
+    // into the other dropdown instead of rejecting the settings update.
+    if (el.accel.value === el.brakeG.value) {
+      if (changed === "accel") el.brakeG.value = lastAccelGesture;
+      else el.accel.value = lastBrakeGesture;
+    }
+    saveSettingsSoon();
+  }
+
+el.accel.addEventListener("change", () => handleGestureChange("accel"));
+el.brakeG.addEventListener("change", () => handleGestureChange("brake"));
+
 
   el.start.addEventListener("click", async () => {
     el.start.disabled = true;
@@ -151,4 +192,4 @@
   loadSettings();
   loadSessions();
   poll();
-})();
+}

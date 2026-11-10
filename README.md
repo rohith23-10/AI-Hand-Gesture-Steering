@@ -117,3 +117,18 @@ and the game, so check those by running the app.
 - Multiple user profiles in the dashboard
 - Per-game key profiles saved in the database
 - Packaged Windows executable
+
+## Two-hand virtual steering wheel
+
+The controller now supports a two-hand steering mode. MediaPipe is configured to
+track up to two hands. When both hands are visible, the engine calculates the angle
+of the line joining their palm centres. Press **Calibrate** while holding both hands
+level in the straight-ahead position; subsequent angle changes are mapped to left
+and right steering through the existing smoothing, dead-zone and keyboard-output
+logic. Keep both hands visible and approximately the same distance from the camera.
+
+The existing open-palm / fist gesture configuration is still used for acceleration
+and braking. Depending on how you pose your hands, you may need to adjust these
+gestures or use a separate input for throttle/brake so that a natural wheel-holding
+pose is not mistaken for braking. This remains a PC game input demo, not a real
+vehicle controller.
