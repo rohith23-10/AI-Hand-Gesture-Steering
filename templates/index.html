@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Gesture Steering</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span class="logo">&#9678;</span> Gesture Steering <small>hand-controlled racing</small></div>
+    <div class="pills">
+      <span class="pill" id="camPill"><i></i><span id="camText">Camera: disconnected</span></span>
+      <span class="pill" id="fpsPill">FPS <b id="fps">0</b></span>
+    </div>
+  </header>
+
+  <div id="errorBar" class="error hidden"></div>
+
+  <main class="grid">
+    <section class="card video-card">
+      <div class="video-wrap">
+        <img id="video" alt="Webcam preview" hidden>
+        <div id="placeholder" class="placeholder">
+          <div class="ph-icon">&#128247;</div>
+          <p>Camera is off</p>
+          <small>Press <b>Start</b> to begin</small>
+        </div>
+      </div>
+      <div class="hint">Hold both hands like a steering wheel. Click Calibrate while centred, then rotate both hands left or right. Open palm = gas, fist = brake.</div>
+    </section>
+
+    <section class="card wheel-card">
+      <h2>Virtual wheel</h2>
+      <svg id="wheel" viewBox="-100 -100 200 200" aria-label="Steering wheel">
+        <g id="wheelGroup">
+          <circle r="86" class="w-rim"/>
+          <circle r="74" class="w-inner"/>
+          <line x1="-74" y1="0" x2="74" y2="0" class="w-spoke"/>
+          <line x1="0" y1="0" x2="0" y2="74" class="w-spoke"/>
+          <circle r="16" class="w-hub"/>
+          <rect x="-4" y="-90" width="8" height="14" rx="3" class="w-mark"/>
+        </g>
+      </svg>
+      <div class="bar"><div class="bar-centre"></div><div id="steerBar" class="bar-fill"></div></div>
+      <div class="readouts">
+        <div><label>Direction</label><b id="direction">CENTER</b></div>
+        <div><label>Gesture</label><b id="gesture">none</b></div>
+      </div>
+      <div class="status-row">
+        <span class="chip" id="gasChip">GAS</span>
+        <span class="chip" id="brakeChip">BRAKE</span>
+        <span class="chip" id="handChip">HAND</span>
+      </div>
+    </section>
+
+    <section class="card control-card">
+      <h2>Controls</h2>
+      <div class="btn-row">
+        <button id="startBtn" class="btn primary">Start</button>
+        <button id="stopBtn" class="btn danger" disabled>Stop</button>
+        <button id="calBtn" class="btn" disabled>Calibrate</button>
+      </div>
+
+      <label class="field">Game name
+        <input id="gameName" type="text" maxlength="80" placeholder="e.g. Traffic Racer">
+      </label>
+      <label class="field">Game keys
+        <select id="keyScheme">
+          {% for s in key_schemes %}<option value="{{ s }}" {% if s == default_scheme %}selected{% endif %}>{{ s|upper }}</option>{% endfor %}
+        </select>
+      </label>
+      <label class="check"><input id="sendKeys" type="checkbox" checked> Send keys to the game (untick for a safe test)</label>
+
+      <h2>Settings</h2>
+      <label class="field">Sensitivity <output id="sensOut">1.0</output>
+        <input id="sens" type="range" min="0.3" max="3" step="0.1" value="1">
+      </label>
+      <label class="field">Dead zone <output id="dzOut">0.05</output>
+        <input id="dz" type="range" min="0" max="0.2" step="0.01" value="0.05">
+      </label>
+      <div class="two">
+        <label class="field">Accelerate
+          <select id="accelGesture">{% for g in gestures %}<option value="{{ g }}">{{ g }}</option>{% endfor %}</select>
+        </label>
+        <label class="field">Brake
+          <select id="brakeGesture">{% for g in gestures %}<option value="{{ g }}">{{ g }}</option>{% endfor %}</select>
+        </label>
+      </div>
+      <div id="keysDown" class="keys-down">Keys held: none</div>
+      <div id="msg" class="msg"></div>
+    </section>
+
+    <section class="card sessions-card">
+      <h2>Recent sessions</h2>
+      <table>
+        <thead><tr><th>Game</th><th>Duration</th><th>Steering events</th><th>When</th></tr></thead>
+        <tbody id="sessions"><tr><td colspan="4" class="muted">No sessions yet</td></tr></tbody>
+      </table>
+    </section>
+  </main>
+
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
