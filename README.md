@@ -1,3 +1,7 @@
+
+
+
+
 # Hand Gesture Steering Controller
 
 Play keyboard-controlled PC racing games (Traffic Racer-style games, Euro Truck Simulator 2, browser racers)
@@ -108,6 +112,10 @@ The suite covers gesture classification, left/right steering, acceleration, brak
 operations, safe stopping (including camera loss and the failsafe), settings validation and the HTTP API,
 using a fake camera and a recording keyboard. Detecting a real hand and driving a real game need a webcam
 and the game, so check those by running the app.
+
+## See It In Action
+
+https://github.com/user-attachments/assets/d0097725-145f-4535-b6b0-5f6086133d44
 
 ## Future improvements
 
